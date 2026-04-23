@@ -28,34 +28,34 @@
 
 ### 対応ファイル形式
 
-| 形式 | 説明 |
-|------|------|
-| JPEG/PNG | 一般的な画像ファイル |
-| PDF | 複数ページ対応（各ページを 2倍スケールでレンダリング） |
+| 形式     | 説明                                                   |
+| -------- | ------------------------------------------------------ |
+| JPEG/PNG | 一般的な画像ファイル                                   |
+| PDF      | 複数ページ対応（各ページを 2倍スケールでレンダリング） |
 
 ## 技術情報
 
 ### 使用モデル
 
-| モデル | ファイル | サイズ | 用途 |
-|--------|---------|--------|------|
-| DEIMv2 | `deim-s-1024x1024.onnx` | 38MB | レイアウト検出（テキスト行の矩形認識）※ndlocr-lite より |
-| PARSeq-30 | `parseq-ndl-24x256-30-tiny-189epoch-tegaki3-r8data-202604.onnx` | — | 文字認識（≤30文字行、入力サイズ 24×256） |
-| PARSeq-50 | `parseq-ndl-24x384-50-tiny-300epoch-tegaki3-r8data-202604.onnx` | — | 文字認識（≤50文字行、入力サイズ 24×384） |
-| PARSeq-100 | `parseq-ndl-24x768-100-tiny-153epoch-tegaki3-r8data-202604.onnx` | — | 文字認識（≤100文字行、入力サイズ 24×768） |
+| モデル     | ファイル                                                         | サイズ | 用途                                                    |
+| ---------- | ---------------------------------------------------------------- | ------ | ------------------------------------------------------- |
+| DEIMv2     | `deim-s-1024x1024.onnx`                                          | 38MB   | レイアウト検出（テキスト行の矩形認識）※ndlocr-lite より |
+| PARSeq-30  | `parseq-ndl-24x256-30-tiny-189epoch-tegaki3-r8data-202604.onnx`  | —      | 文字認識（≤30文字行、入力サイズ 24×256）                |
+| PARSeq-50  | `parseq-ndl-24x384-50-tiny-300epoch-tegaki3-r8data-202604.onnx`  | —      | 文字認識（≤50文字行、入力サイズ 24×384）                |
+| PARSeq-100 | `parseq-ndl-24x768-100-tiny-153epoch-tegaki3-r8data-202604.onnx` | —      | 文字認識（≤100文字行、入力サイズ 24×768）               |
 
 DEIMv2 は行ごとに文字数カテゴリ（1/2/3）を予測し、それに応じて最適な PARSeq モデルを選択するカスケード方式で処理します。PARSeq モデルは ndlocr-lite ベースの tiny 構成を入力高さ 24px・tegaki3 データ追加で再学習した改良版です（202604）。
 
 ### 技術スタック
 
-| 要素 | 技術 |
-|------|------|
-| フレームワーク | Vite + React 19 + TypeScript |
-| OCRランタイム | onnxruntime-web 1.20.0（WASM CPU バックエンド） |
-| PDF処理 | pdfjs-dist 4.9.0 |
-| OCR処理 | Web Worker（UIをブロックしない非同期処理） |
-| モデルキャッシュ | IndexedDB |
-| デプロイ | Netlify（COOP/COEP ヘッダー対応） |
+| 要素             | 技術                                            |
+| ---------------- | ----------------------------------------------- |
+| フレームワーク   | Vite + React 19 + TypeScript                    |
+| OCRランタイム    | onnxruntime-web 1.20.0（WASM CPU バックエンド） |
+| PDF処理          | pdfjs-dist 4.9.0                                |
+| OCR処理          | Web Worker（UIをブロックしない非同期処理）      |
+| モデルキャッシュ | IndexedDB                                       |
+| デプロイ         | Netlify（COOP/COEP ヘッダー対応）               |
 
 ### OCR処理フロー
 
@@ -97,7 +97,7 @@ npm run build
 
 ## 帰属・クレジット
 
-本ツールは **[NDLOCR-Lite](https://github.com/ndl-lab/ndlocr-lite)**（国立国会図書館 NDL Lab）の派生物です。レイアウト検出モデル（DEIMv2）・文字セット・推論アルゴリズムは NDLOCR-Lite に帰属します。文字認識モデル（PARSeq）は NDLOCR-Lite のアーキテクチャをベースに独自再学習した改良版です。
+本ツールは **[NDLOCR-Lite](https://github.com/ndl-lab/ndlocr-lite)**（国立国会図書館 NDL Lab）の派生物です。レイアウト検出モデル（DEIMv2）・文字認識モデル（PARSeq）・文字セット・推論アルゴリズムは NDLOCR-Lite に帰属します。
 
 - **NDLOCR-Lite**: [ndl-lab/ndlocr-lite](https://github.com/ndl-lab/ndlocr-lite)（国立国会図書館）
 - DEIMv2: [ShihuaHuang95/DEIM](https://github.com/ShihuaHuang95/DEIM)
