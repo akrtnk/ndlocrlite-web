@@ -30,7 +30,7 @@ self.onmessage = async (e: MessageEvent<RecWorkerInMessage>) => {
         const d100 = await loadModel('recognition100', (p) => {
           self.postMessage({ type: 'REC_PROGRESS', progress: p } satisfies RecWorkerOutMessage)
         })
-        rec100 = new TextRecognizer([1, 3, 16, 768]); await rec100.initialize(d100)
+        rec100 = new TextRecognizer([1, 3, 24, 768]); await rec100.initialize(d100)
       } else {
         const progresses = [0, 0, 0]
         const reportProgress = () => {
@@ -44,9 +44,9 @@ self.onmessage = async (e: MessageEvent<RecWorkerInMessage>) => {
           loadModel('recognition100', (p) => { progresses[2] = p; reportProgress() }),
         ])
 
-        rec30  = new TextRecognizer([1, 3, 16, 256]); await rec30.initialize(d30)
-        rec50  = new TextRecognizer([1, 3, 16, 384]); await rec50.initialize(d50)
-        rec100 = new TextRecognizer([1, 3, 16, 768]); await rec100.initialize(d100)
+        rec30  = new TextRecognizer([1, 3, 24, 256]); await rec30.initialize(d30)
+        rec50  = new TextRecognizer([1, 3, 24, 384]); await rec50.initialize(d50)
+        rec100 = new TextRecognizer([1, 3, 24, 768]); await rec100.initialize(d100)
       }
 
       self.postMessage({ type: 'REC_READY' } satisfies RecWorkerOutMessage)
