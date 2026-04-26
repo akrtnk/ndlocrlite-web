@@ -27,7 +27,7 @@ export class TextRecognizer {
 
   constructor(inputShape?: [number, number, number, number]) {
     this.config = {
-      inputShape: inputShape ?? [1, 3, 16, 384],
+      inputShape: inputShape ?? [1, 3, 24, 384],
       charList: [],
       maxLength: 25,
     }
@@ -94,15 +94,20 @@ export class TextRecognizer {
   }
 
   static cropImageData(imageData: ImageData, region: TextRegion): ImageData {
-    const sourceCanvas = new OffscreenCanvas(imageData.width, imageData.height)
-    const sourceCtx = sourceCanvas.getContext('2d')!
-    sourceCtx.putImageData(imageData, 0, 0)
+  const sourceCanvas = new OffscreenCanvas(imageData.width, imageData.height)
+  const sourceCtx = sourceCanvas.getContext('2d')!
+  sourceCtx.putImageData(imageData, 0, 0)
 
-    const canvas = new OffscreenCanvas(region.width, region.height)
-    const ctx = canvas.getContext('2d')!
-    ctx.drawImage(sourceCanvas, region.x, region.y, region.width, region.height, 0, 0, region.width, region.height)
+  // 最小サイズを保証する（モデルの要求する最小値）
+  const minSize = 32
+  const cropWidth = Math.max(region.width, minSize)
+  const cropHeight = Math.max(region.height, minSize)
 
-    return ctx.getImageData(0, 0, region.width, region.height)
+  const canvas = new OffscreenCanvas(cropWidth, cropHeight)
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(sourceCanvas, region.x, region.y, region.width, region.height, 0, 0, cropWidth, cropHeight)
+
+  return ctx.getImageData(0, 0, cropWidth, cropHeight)
   }
 
   /** 複数領域を一括クロップ。sourceCanvas を1度だけ生成して使い回す（個別生成だと N × フルサイズ Canvas が同時に乗るためOOM） */
