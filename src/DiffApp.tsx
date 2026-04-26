@@ -178,9 +178,9 @@ function OcrPanel({ title, panel, onPanelChange, processRegion, processFiles, pr
     onPanelChange({ ...panel, cropDataUrl: previewDataUrl, isOcrLoading: true, ocrText: '' })
     try {
       const result = await processRegion(imageData)
-      onPanelChange((prev: PanelState) => ({ ...prev, isOcrLoading: false, ocrText: result.fullText }))
+      onPanelChange({ ...panel, cropDataUrl: previewDataUrl, isOcrLoading: false, ocrText: result.fullText })
     } catch {
-      onPanelChange((prev: PanelState) => ({ ...prev, isOcrLoading: false, ocrText: '' }))
+      onPanelChange({ ...panel, cropDataUrl: previewDataUrl, isOcrLoading: false, ocrText: '' })
     }
   }, [processedImageDataUrl, panel, onPanelChange, processRegion])
 
