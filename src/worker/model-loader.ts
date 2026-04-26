@@ -13,7 +13,7 @@ export const MODEL_VERSION = '2.0.0'
 // モデル配信ベースURL（環境変数 VITE_MODEL_BASE_URL で指定、末尾スラッシュなし）
 const MODEL_BASE_URL = (import.meta.env.VITE_MODEL_BASE_URL as string | undefined) ?? ''
 
-const R2_BASE = 'https://pub-9cac8877191a4c3697edb59fd982130f.r2.dev'
+const R2_BASE = '/models-proxy'
 
 // ONNXモデルのURL
 export const MODEL_URLS: Record<string, string> = {

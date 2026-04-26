@@ -9,6 +9,13 @@
     Cross-Origin-Opener-Policy = "same-origin"
     Cross-Origin-Embedder-Policy = "require-corp"
 
+# r2.devのCORSエラーを回避するプロキシ
+[[redirects]]
+  from = "/models-proxy/*"
+  to = "https://pub-9cac8877191a4c3697edb59fd982130f.r2.dev/:splat"
+  status = 200
+  force = true
+
 # SPAフォールバック
 [[redirects]]
   from = "/*"
