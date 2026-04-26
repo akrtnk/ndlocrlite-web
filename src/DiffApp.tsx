@@ -4,6 +4,7 @@ import { useFileProcessor } from './hooks/useFileProcessor'
 import { ImageViewer } from './components/viewer/ImageViewer'
 import { imageDataToDataUrl } from './utils/imageLoader'
 import './DiffApp.css'
+import type { ProcessedImage } from './types/ocr'
 
 // -----------------------------------------------
 // diff ロジック（diff-tool.html から移植）
@@ -159,15 +160,21 @@ interface OcrPanelProps {
   onPanelChange: (p: PanelState) => void
   processRegion: (imageData: ImageData) => Promise<{ fullText: string }>
   processFiles: (files: File[]) => Promise<void>
-  processedImageDataUrl: string
+  processedImages: ProcessedImage[]
 }
 
-function OcrPanel({ title, panel, onPanelChange, processRegion, processFiles, processedImageDataUrl }: OcrPanelProps) {
+function OcrPanel({ title, panel, onPanelChange, processRegion, processFiles, processedImages }: OcrPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [pageIndex, setPageIndex] = useState(0)
+
+  const processedImageDataUrl = processedImages.length > 0
+    ? imageDataToDataUrl(processedImages[pageIndex]?.imageData ?? processedImages[0].imageData)
+    : ''
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (files.length === 0) return
+    setPageIndex(0)
     onPanelChange({ ...emptyPanel(), fileName: files[0].name, isOcrLoading: false })
     await processFiles(files)
   }
@@ -205,6 +212,28 @@ function OcrPanel({ title, panel, onPanelChange, processRegion, processFiles, pr
         </span>
       </div>
 
+      {/* ページ選択 */}
+      {processedImages.length > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ fontSize: 13, color: '#555' }}>ページ：</label>
+          <select
+            value={pageIndex}
+            onChange={(e) => {
+              setPageIndex(Number(e.target.value))
+              onPanelChange({ ...panel, cropDataUrl: '', ocrText: '' })
+            }}
+            style={{ fontSize: 13, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc' }}
+          >
+            {processedImages.map((img, i) => (
+              <option key={i} value={i}>
+                {img.pageIndex ? `p.${img.pageIndex}` : `${i + 1}ページ`}
+              </option>
+            ))}
+          </select>
+          <span style={{ fontSize: 12, color: '#888' }}>{processedImages.length}ページ中</span>
+        </div>
+      )}
+      
       {/* 画像ビューワー */}
       {processedImageDataUrl && (
         <div className="diff-viewer-wrap">
@@ -259,14 +288,6 @@ export default function DiffApp({ onBack }: { onBack: () => void }) {
   const [diffHtml, setDiffHtml] = useState<string | null>(null)
   const [noDiff, setNoDiff] = useState(false)
 
-  const beforeImageDataUrl = fileProcBefore.processedImages[0]
-    ? imageDataToDataUrl(fileProcBefore.processedImages[0].imageData)
-    : ''
-
-  const afterImageDataUrl = fileProcAfter.processedImages[0]
-    ? imageDataToDataUrl(fileProcAfter.processedImages[0].imageData)
-    : ''
-
   const handleCompare = () => {
     const t1 = panelBefore.ocrText
     const t2 = panelAfter.ocrText
@@ -297,7 +318,7 @@ export default function DiffApp({ onBack }: { onBack: () => void }) {
             onPanelChange={setPanelBefore}
             processRegion={workerBefore.processRegion}
             processFiles={fileProcBefore.processFiles}
-            processedImageDataUrl={beforeImageDataUrl}
+            processedImages={fileProcBefore.processedImages}
           />
           <OcrPanel
             title="変更後"
@@ -305,7 +326,7 @@ export default function DiffApp({ onBack }: { onBack: () => void }) {
             onPanelChange={setPanelAfter}
             processRegion={workerAfter.processRegion}
             processFiles={fileProcAfter.processFiles}
-            processedImageDataUrl={afterImageDataUrl}
+            processedImages={fileProcAfter.processedImages}
           />
         </div>
 
