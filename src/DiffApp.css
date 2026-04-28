@@ -249,3 +249,116 @@
   font-weight: bold;
   padding: 20px;
 }
+
+/* ボタンエリア */
+.diff-compare-area {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+/* 一致率バー */
+.match-rate-bar-wrap {
+  margin-bottom: 20px;
+}
+
+.match-rate-label {
+  font-size: 15px;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.match-rate-bar {
+  height: 20px;
+  background: #eee;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.match-rate-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #28a745, #85d09e);
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+/* 一致・不一致セクション */
+.match-section {
+  margin-bottom: 16px;
+}
+
+.match-section-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+.unmatched-title {
+  background: #fff0f0;
+  color: #c0392b;
+}
+
+.matched-title {
+  background: #f0fff4;
+  color: #27ae60;
+}
+
+.match-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.match-item {
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  line-height: 1.5;
+}
+
+.match-item.unmatched {
+  background: #ffebe9;
+  border-left: 3px solid #e74c3c;
+}
+
+.match-item.matched {
+  background: #e6ffec;
+  border-left: 3px solid #28a745;
+}
+
+/* ペーストゾーン */
+.diff-paste-zone {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: #fafafa;
+  min-height: 100px;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.diff-paste-zone:focus,
+.diff-paste-zone:focus-within {
+  border-color: #007bff;
+  background: #f0f7ff;
+}
+
+.diff-paste-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+}

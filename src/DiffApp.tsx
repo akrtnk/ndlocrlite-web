@@ -1,16 +1,15 @@
 import { useState, useCallback, useRef } from 'react'
+import * as Diff from 'diff'
 import { useOCRWorker } from './hooks/useOCRWorker'
 import { useFileProcessor } from './hooks/useFileProcessor'
 import { ImageViewer } from './components/viewer/ImageViewer'
 import { imageDataToDataUrl } from './utils/imageLoader'
-import './DiffApp.css'
 import type { ProcessedImage } from './types/ocr'
+import './DiffApp.css'
 
 // -----------------------------------------------
-// diff ロジック（diff-tool.html から移植）
+// diff ロジック
 // -----------------------------------------------
-import * as Diff from 'diff'
-
 interface DiffPart {
   value: string
   added?: boolean
@@ -117,6 +116,44 @@ function buildDiffTable(text1: string, text2: string): string {
 }
 
 // -----------------------------------------------
+// 内容一致チェック ロジック
+// -----------------------------------------------
+interface MatchResult {
+  matched: string[]
+  unmatched: string[]
+  matchRate: number
+}
+
+function checkContainment(beforeText: string, afterText: string): MatchResult {
+  // 句点で文に分割・空文字除去・正規化
+  const normalize = (s: string) => s.replace(/\s+/g, '').replace(/　/g, '')
+  const sentences = beforeText
+    .split(/[。！？\n]/)
+    .map(s => s.trim())
+    .filter(s => s.length > 2)
+
+  const normalizedAfter = normalize(afterText)
+
+  const matched: string[] = []
+  const unmatched: string[] = []
+
+  sentences.forEach(sentence => {
+    const normalizedSentence = normalize(sentence)
+    if (normalizedAfter.includes(normalizedSentence)) {
+      matched.push(sentence)
+    } else {
+      unmatched.push(sentence)
+    }
+  })
+
+  const matchRate = sentences.length > 0
+    ? Math.round((matched.length / sentences.length) * 100)
+    : 0
+
+  return { matched, unmatched, matchRate }
+}
+
+// -----------------------------------------------
 // 1ペイン分のコンポーネント
 // -----------------------------------------------
 interface PanelState {
@@ -159,11 +196,12 @@ interface OcrPanelProps {
   panel: PanelState
   onPanelChange: (p: PanelState) => void
   processRegion: (imageData: ImageData) => Promise<{ fullText: string }>
+  processImage: (image: ProcessedImage, fileIndex: number, totalFiles: number) => Promise<{ fullText: string }>
   processFiles: (files: File[]) => Promise<void>
   processedImages: ProcessedImage[]
 }
 
-function OcrPanel({ title, panel, onPanelChange, processRegion, processFiles, processedImages }: OcrPanelProps) {
+function OcrPanel({ title, panel, onPanelChange, processRegion, processImage, processFiles, processedImages }: OcrPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [pageIndex, setPageIndex] = useState(0)
 
@@ -178,6 +216,34 @@ function OcrPanel({ title, panel, onPanelChange, processRegion, processFiles, pr
     onPanelChange({ ...emptyPanel(), fileName: files[0].name, isOcrLoading: false })
     await processFiles(files)
   }
+
+  const handlePasteZone = useCallback(async (e: React.ClipboardEvent<HTMLDivElement>) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+      const files: File[] = []
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (file) files.push(file)
+        }
+      }
+      if (files.length > 0) {
+        setPageIndex(0)
+        onPanelChange({ ...emptyPanel(), fileName: 'クリップボード', isOcrLoading: false })
+        await processFiles(files)
+      }
+    }, [processFiles, onPanelChange])
+
+  const handleFullOcr = useCallback(async () => {
+    if (!processedImages[pageIndex]) return
+    onPanelChange({ ...panel, isOcrLoading: true, ocrText: '', cropDataUrl: '' })
+    try {
+      const result = await processImage(processedImages[pageIndex], 0, 1)
+      onPanelChange({ ...panel, isOcrLoading: false, ocrText: result.fullText, cropDataUrl: '' })
+    } catch {
+      onPanelChange({ ...panel, isOcrLoading: false, ocrText: '' })
+    }
+  }, [processedImages, pageIndex, panel, onPanelChange, processImage])
 
   const handleRegionSelect = useCallback(async (_blocks: unknown, bbox: { x: number; y: number; width: number; height: number }) => {
     if (!processedImageDataUrl) return
@@ -195,22 +261,29 @@ function OcrPanel({ title, panel, onPanelChange, processRegion, processFiles, pr
     <div className="diff-panel">
       <h2>{title}</h2>
 
-      {/* ファイル選択 */}
-      <div className="diff-file-area">
-        <button className="diff-file-btn" onClick={() => fileInputRef.current?.click()}>
-          ファイルを選択
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,.pdf"
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
-        <span className="diff-file-name">
-          {panel.fileName || 'ファイル未選択'}
-        </span>
-      </div>
+      {/* ファイル選択・クリップボード */}
+            <div
+              className="diff-paste-zone"
+              onPaste={handlePasteZone}
+              tabIndex={0}
+            >
+              <p className="diff-paste-hint">このエリアを選択して、Cmd+Vで貼り付け、またはボタンから選択</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button className="diff-file-btn" onClick={() => fileInputRef.current?.click()}>
+                  ファイルを選択
+                </button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,.pdf"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+            </div>
+            <span className="diff-file-name">
+              {panel.fileName || 'ファイル未選択'}
+            </span>
 
       {/* ページ選択 */}
       {processedImages.length > 1 && (
@@ -233,10 +306,18 @@ function OcrPanel({ title, panel, onPanelChange, processRegion, processFiles, pr
           <span style={{ fontSize: 12, color: '#888' }}>{processedImages.length}ページ中</span>
         </div>
       )}
-      
+
       {/* 画像ビューワー */}
       {processedImageDataUrl && (
         <div className="diff-viewer-wrap">
+          <button
+            className="diff-file-btn"
+            style={{ width: '100%', marginBottom: 4, background: '#28a745' }}
+            onClick={handleFullOcr}
+            disabled={panel.isOcrLoading}
+          >
+            全体をOCR
+          </button>
           <ImageViewer
             imageDataUrl={processedImageDataUrl}
             textBlocks={[]}
@@ -277,6 +358,8 @@ function OcrPanel({ title, panel, onPanelChange, processRegion, processFiles, pr
 // -----------------------------------------------
 // メインコンポーネント
 // -----------------------------------------------
+type ResultMode = 'diff' | 'containment' | null
+
 export default function DiffApp({ onBack }: { onBack: () => void }) {
   const workerBefore = useOCRWorker()
   const workerAfter = useOCRWorker()
@@ -285,23 +368,39 @@ export default function DiffApp({ onBack }: { onBack: () => void }) {
 
   const [panelBefore, setPanelBefore] = useState<PanelState>(emptyPanel())
   const [panelAfter, setPanelAfter] = useState<PanelState>(emptyPanel())
+  const [resultMode, setResultMode] = useState<ResultMode>(null)
   const [diffHtml, setDiffHtml] = useState<string | null>(null)
   const [noDiff, setNoDiff] = useState(false)
+  const [matchResult, setMatchResult] = useState<MatchResult | null>(null)
 
   const handleCompare = () => {
     const t1 = panelBefore.ocrText
     const t2 = panelAfter.ocrText
     if (!t1 && !t2) return
+    setMatchResult(null)
     if (t1 === t2) {
       setNoDiff(true)
       setDiffHtml(null)
+      setResultMode('diff')
       return
     }
     setNoDiff(false)
     setDiffHtml(buildDiffTable(t1, t2))
+    setResultMode('diff')
+  }
+
+  const handleContainment = () => {
+    const t1 = panelBefore.ocrText
+    const t2 = panelAfter.ocrText
+    if (!t1 || !t2) return
+    setDiffHtml(null)
+    setNoDiff(false)
+    setMatchResult(checkContainment(t1, t2))
+    setResultMode('containment')
   }
 
   const canCompare = !!panelBefore.ocrText || !!panelAfter.ocrText
+  const canContainment = !!panelBefore.ocrText && !!panelAfter.ocrText
 
   return (
     <div className="diff-app">
@@ -317,6 +416,7 @@ export default function DiffApp({ onBack }: { onBack: () => void }) {
             panel={panelBefore}
             onPanelChange={setPanelBefore}
             processRegion={workerBefore.processRegion}
+            processImage={workerBefore.processImage}
             processFiles={fileProcBefore.processFiles}
             processedImages={fileProcBefore.processedImages}
           />
@@ -325,11 +425,13 @@ export default function DiffApp({ onBack }: { onBack: () => void }) {
             panel={panelAfter}
             onPanelChange={setPanelAfter}
             processRegion={workerAfter.processRegion}
+            processImage={workerAfter.processImage}
             processFiles={fileProcAfter.processFiles}
             processedImages={fileProcAfter.processedImages}
           />
         </div>
 
+        {/* ボタンエリア */}
         <div className="diff-compare-area">
           <button
             className="diff-compare-btn"
@@ -338,18 +440,71 @@ export default function DiffApp({ onBack }: { onBack: () => void }) {
           >
             テキストを比較する
           </button>
+          <button
+            className="diff-compare-btn"
+            style={{ background: '#28a745' }}
+            onClick={handleContainment}
+            disabled={!canContainment}
+          >
+            内容一致を確認する
+          </button>
         </div>
 
-        {noDiff && (
+        {/* diff結果 */}
+        {resultMode === 'diff' && noDiff && (
           <div className="diff-result">
             <p className="diff-no-diff">✅ 差分はありません（テキストは同一です）</p>
           </div>
         )}
-
-        {diffHtml && (
+        {resultMode === 'diff' && diffHtml && (
           <div className="diff-result">
             <h3>比較結果</h3>
             <div dangerouslySetInnerHTML={{ __html: diffHtml }} />
+          </div>
+        )}
+
+        {/* 内容一致結果 */}
+        {resultMode === 'containment' && matchResult && (
+          <div className="diff-result">
+            <h3>内容一致確認結果</h3>
+            <div className="match-rate-bar-wrap">
+              <div className="match-rate-label">
+                変更前テキストの一致率：<strong>{matchResult.matchRate}%</strong>
+                （{matchResult.matched.length}件一致 / 全{matchResult.matched.length + matchResult.unmatched.length}文）
+              </div>
+              <div className="match-rate-bar">
+                <div
+                  className="match-rate-fill"
+                  style={{ width: `${matchResult.matchRate}%` }}
+                />
+              </div>
+            </div>
+
+            {matchResult.unmatched.length > 0 && (
+              <div className="match-section">
+                <h4 className="match-section-title unmatched-title">
+                  ❌ 変更後に見当たらない内容（{matchResult.unmatched.length}件）
+                </h4>
+                <ul className="match-list">
+                  {matchResult.unmatched.map((s, i) => (
+                    <li key={i} className="match-item unmatched">{s}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {matchResult.matched.length > 0 && (
+              <div className="match-section">
+                <h4 className="match-section-title matched-title">
+                  ✅ 一致している内容（{matchResult.matched.length}件）
+                </h4>
+                <ul className="match-list">
+                  {matchResult.matched.map((s, i) => (
+                    <li key={i} className="match-item matched">{s}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </main>
